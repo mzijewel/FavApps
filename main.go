@@ -28,13 +28,13 @@ func main() {
 	pages = tview.NewPages()
 
 	list = tview.NewList().ShowSecondaryText(false)
-	list.SetBorder(true).SetTitle(" Favourite Apps ")
+	list.SetBorder(true).SetTitle(" Favourite Apps ").SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorYellow)
 
 	details = tview.NewTextView().
 		SetDynamicColors(true).
 		SetRegions(true).
 		SetWordWrap(true)
-	details.SetBorder(true).SetTitle(" Description ")
+	details.SetBorder(true).SetTitle(" Description ").SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorYellow)
 
 	refreshList()
 
@@ -46,26 +46,40 @@ func main() {
 		updateDetails(index)
 	})
 
-	flex = tview.NewFlex().
-		AddItem(list, 0, 1, true).
-		AddItem(details, 0, 2, false)
+	flex = tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(tview.NewFlex().
+			AddItem(list, 0, 1, true).
+			AddItem(details, 0, 2, false), 0, 1, true).
+		AddItem(tview.NewTextView().
+			SetTextAlign(tview.AlignCenter).
+			SetDynamicColors(true).
+			SetText("[yellow](a) Add  (e) Edit  (d) Delete  (q) Quit"), 1, 1, false)
 
 	pages.AddPage("main", flex, true, true)
 
 	tviewApp.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		frontPage, _ := pages.GetFrontPage()
+		if frontPage != "main" {
+			return event
+		}
+
 		if event.Key() == tcell.KeyRune {
 			switch event.Rune() {
 			case 'q':
 				tviewApp.Stop()
+				return nil
 			case 'a':
 				showForm(-1)
+				return nil
 			case 'e':
 				if len(apps) > 0 {
 					showForm(list.GetCurrentItem())
+					return nil
 				}
 			case 'd':
 				if len(apps) > 0 {
 					showDeleteConfirm()
+					return nil
 				}
 			}
 		}
@@ -79,8 +93,10 @@ func main() {
 
 func refreshList() {
 	list.Clear()
+	list.SetTitle(fmt.Sprintf(" Favourite Apps (%d) ", len(apps)))
 	for i, a := range apps {
-		list.AddItem(a.Name, "", 0, nil)
+		// Use tview's markup for serial vs name
+		list.AddItem(fmt.Sprintf("[green]%d.[white] %s", i+1, a.Name), "", 0, nil)
 		if i == 0 {
 			updateDetails(0)
 		}
@@ -98,43 +114,81 @@ func updateDetails(index int) {
 }
 
 func showForm(index int) {
-	form := tview.NewForm()
 	name := ""
 	description := ""
 
 	if index >= 0 && index < len(apps) {
 		name = apps[index].Name
 		description = apps[index].Description
-		form.SetTitle(" Edit App ")
-	} else {
-		index = -1 // Ensure it's treated as "Add" if out of bounds
-		form.SetTitle(" Add App ")
 	}
 
-	form.AddInputField("Name", name, 20, nil, func(text string) {
-		name = text
-	})
-	form.AddTextArea("Description", description, 40, 5, 0, func(text string) {
-		description = text
-	})
+	nameInput := tview.NewInputField().
+		SetText(name).
+		SetFieldBackgroundColor(tcell.ColorReset)
+	nameInput.SetBorder(true).SetTitle(" Name ").SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorYellow)
 
-	form.AddButton("Save", func() {
-		newApp := app.App{Name: name, Description: description}
-		if index >= 0 {
-			apps[index] = newApp
-		} else {
-			apps = append(apps, newApp)
+	descInput := tview.NewTextArea().
+		SetPlaceholder("Enter description...").
+		SetText(description, false)
+	descInput.SetBorder(true).SetTitle(" Description ").SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorYellow)
+
+	// Layout like lazygit commit message
+	formFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(nameInput, 3, 1, true).
+		AddItem(descInput, 0, 1, false).
+		AddItem(tview.NewTextView().
+			SetTextAlign(tview.AlignCenter).
+			SetDynamicColors(true).
+			SetText("(Ctrl+S) Save  (Esc) Cancel"), 1, 1, false)
+
+	// Input capture for name input to handle Enter
+	nameInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEnter {
+			tviewApp.SetFocus(descInput)
+			return nil
 		}
-		app.SaveApps(apps)
-		refreshList()
-		pages.RemovePage("form")
-	})
-	form.AddButton("Cancel", func() {
-		pages.RemovePage("form")
+		return event
 	})
 
-	form.SetBorder(true)
-	pages.AddPage("form", modal(form, 60, 15), true, true)
+	// Input capture for the form
+	formFlex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			pages.RemovePage("form")
+			return nil
+		}
+		// Ctrl+S to save
+		if event.Key() == tcell.KeyCtrlS {
+			newName := nameInput.GetText()
+			newDesc := descInput.GetText()
+			if newName == "" {
+				return nil
+			}
+
+			newApp := app.App{Name: newName, Description: newDesc}
+			if index >= 0 {
+				apps[index] = newApp
+			} else {
+				apps = append(apps, newApp)
+			}
+			app.SaveApps(apps)
+			refreshList()
+			pages.RemovePage("form")
+			return nil
+		}
+		// Tab to switch between fields (legacy support)
+		if event.Key() == tcell.KeyTab {
+			if nameInput.HasFocus() {
+				tviewApp.SetFocus(descInput)
+			} else {
+				tviewApp.SetFocus(nameInput)
+			}
+			return nil
+		}
+		return event
+	})
+
+	pages.AddPage("form", modal(formFlex, 60, 20), true, true)
+	tviewApp.SetFocus(nameInput)
 }
 
 func showDeleteConfirm() {
@@ -143,19 +197,31 @@ func showDeleteConfirm() {
 		return
 	}
 
-	modal := tview.NewModal().
-		SetText(fmt.Sprintf("Are you sure you want to delete '%s'?", apps[index].Name)).
-		AddButtons([]string{"Delete", "Cancel"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			if buttonLabel == "Delete" {
-				apps = append(apps[:index], apps[index+1:]...)
-				app.SaveApps(apps)
-				refreshList()
-			}
-			pages.RemovePage("delete")
-		})
+	confirmText := tview.NewTextView().
+		SetTextAlign(tview.AlignCenter).
+		SetDynamicColors(true).
+		SetText(fmt.Sprintf("\nAre you sure you want to delete\n\n[yellow]%s[white]?\n\n\n(Enter) Confirm  (Esc) Cancel", apps[index].Name))
 
-	pages.AddPage("delete", modal, true, true)
+	confirmBox := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(confirmText, 0, 1, true)
+	confirmBox.SetBorder(true).SetTitle(" Delete ").SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorYellow)
+
+	confirmBox.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			pages.RemovePage("delete")
+			return nil
+		}
+		if event.Key() == tcell.KeyEnter {
+			apps = append(apps[:index], apps[index+1:]...)
+			app.SaveApps(apps)
+			refreshList()
+			pages.RemovePage("delete")
+			return nil
+		}
+		return event
+	})
+
+	pages.AddPage("delete", modal(confirmBox, 60, 10), true, true)
 }
 
 func modal(p tview.Primitive, width, height int) tview.Primitive {
