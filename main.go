@@ -3,18 +3,20 @@ package main
 import (
 	"favapss/app"
 	"fmt"
+	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
 var (
-	tviewApp *tview.Application
-	list     *tview.List
-	details  *tview.TextView
-	flex     *tview.Flex
-	pages    *tview.Pages
-	apps     []app.App
+	tviewApp        *tview.Application
+	list            *tview.List
+	details         *tview.TextView
+	flex            *tview.Flex
+	pages           *tview.Pages
+	apps            []app.App
+	filteredIndices []int
 
 	titleColor          = "green"
 	helpColor           = "yellow"
@@ -30,6 +32,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	resetFilteredIndices()
 
 	tviewApp = tview.NewApplication()
 	pages = tview.NewPages()
@@ -65,7 +68,7 @@ func main() {
 		AddItem(tview.NewTextView().
 			SetTextAlign(tview.AlignCenter).
 			SetDynamicColors(true).
-			SetText(fmt.Sprintf("[%s]<a> Add  <e> Edit  <d> Delete  <p> data path  <q> Quit", helpColor)), 1, 1, false)
+			SetText(fmt.Sprintf("[%s]<a> Add  <e> Edit  <d> Delete  <p> data path  </> Search  <q> Quit", helpColor)), 1, 1, false)
 
 	pages.AddPage("main", flex, true, true)
 
@@ -87,15 +90,18 @@ func main() {
 				showForm(-1)
 				return nil
 			case 'e':
-				if len(apps) > 0 {
+				if len(filteredIndices) > 0 {
 					showForm(list.GetCurrentItem())
 					return nil
 				}
 			case 'd':
-				if len(apps) > 0 {
+				if len(filteredIndices) > 0 {
 					showDeleteConfirm()
 					return nil
 				}
+			case '/':
+				showSearch()
+				return nil
 			}
 		}
 		return event
@@ -103,6 +109,13 @@ func main() {
 
 	if err := tviewApp.SetRoot(pages, true).Run(); err != nil {
 		panic(err)
+	}
+}
+
+func resetFilteredIndices() {
+	filteredIndices = nil
+	for i := range apps {
+		filteredIndices = append(filteredIndices, i)
 	}
 }
 
@@ -132,6 +145,7 @@ func showConfigForm() {
 				if err != nil {
 					// Handle error, maybe show alert, but for now just refresh
 				}
+				resetFilteredIndices()
 				refreshList(0)
 				pages.RemovePage("config")
 			}
@@ -146,17 +160,18 @@ func showConfigForm() {
 
 func refreshList(selectedIndex int) {
 	list.Clear()
-	list.SetTitle(fmt.Sprintf("[%s] Favourite Apps (%d) ", titleColor, len(apps)))
-	for i, a := range apps {
+	list.SetTitle(fmt.Sprintf("[%s] Favourite Apps (%d) ", titleColor, len(filteredIndices)))
+	for i, idx := range filteredIndices {
+		a := apps[idx]
 		// Use tview's markup for serial vs name
 		list.AddItem(fmt.Sprintf("[gray][%d] [white] %s  ", i+1, a.Name), "", 0, nil)
 	}
 
-	if len(apps) > 0 {
+	if len(filteredIndices) > 0 {
 		if selectedIndex < 0 {
 			selectedIndex = 0
-		} else if selectedIndex >= len(apps) {
-			selectedIndex = len(apps) - 1
+		} else if selectedIndex >= len(filteredIndices) {
+			selectedIndex = len(filteredIndices) - 1
 		}
 		list.SetCurrentItem(selectedIndex)
 		updateDetails(selectedIndex)
@@ -166,19 +181,52 @@ func refreshList(selectedIndex int) {
 }
 
 func updateDetails(index int) {
-	if index >= 0 && index < len(apps) {
+	if index >= 0 && index < len(filteredIndices) {
 		details.Clear()
-		fmt.Fprintf(details, "%s", apps[index].Description)
+		fmt.Fprintf(details, "%s", apps[filteredIndices[index]].Description)
 	}
+}
+
+func showSearch() {
+	input := tview.NewInputField().
+		SetFieldBackgroundColor(tcell.ColorReset)
+	input.SetBorder(true).
+		SetTitle(fmt.Sprintf("[%s] Search [%s] <Esc> Close ", titleColor, helpColor)).
+		SetTitleAlign(tview.AlignLeft)
+	input.SetFocusFunc(func() { input.SetBorderColor(borderSelectedColor) })
+	input.SetBlurFunc(func() { input.SetBorderColor(borderNormalColor) })
+
+	input.SetChangedFunc(func(text string) {
+		filteredIndices = nil
+		for i, a := range apps {
+			if text == "" ||
+				strings.Contains(strings.ToLower(a.Name), strings.ToLower(text)) ||
+				strings.Contains(strings.ToLower(a.Description), strings.ToLower(text)) {
+				filteredIndices = append(filteredIndices, i)
+			}
+		}
+		refreshList(0)
+	})
+
+	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc || event.Key() == tcell.KeyEnter {
+			pages.RemovePage("search")
+			return nil
+		}
+		return event
+	})
+
+	pages.AddPage("search", modal(input, 60, 3), true, true)
+	tviewApp.SetFocus(input)
 }
 
 func showForm(index int) {
 	name := ""
 	description := ""
 
-	if index >= 0 && index < len(apps) {
-		name = apps[index].Name
-		description = apps[index].Description
+	if index >= 0 && index < len(filteredIndices) {
+		name = apps[filteredIndices[index]].Name
+		description = apps[filteredIndices[index]].Description
 	}
 
 	nameInput := tview.NewInputField().
@@ -225,12 +273,13 @@ func showForm(index int) {
 
 			newApp := app.App{Name: newName, Description: newDesc}
 			if index >= 0 {
-				apps[index] = newApp
+				apps[filteredIndices[index]] = newApp
 			} else {
 				apps = append(apps, newApp)
 				index = len(apps) - 1
 			}
 			app.SaveApps(apps)
+			resetFilteredIndices()
 			refreshList(index)
 			pages.RemovePage("form")
 			return nil
@@ -253,14 +302,15 @@ func showForm(index int) {
 
 func showDeleteConfirm() {
 	index := list.GetCurrentItem()
-	if index < 0 || index >= len(apps) {
+	if index < 0 || index >= len(filteredIndices) {
 		return
 	}
 
+	appIdx := filteredIndices[index]
 	confirmText := tview.NewTextView().
 		SetTextAlign(tview.AlignCenter).
 		SetDynamicColors(true).
-		SetText(fmt.Sprintf("\nAre you sure you want to delete\n\n[yellow]%s[white]?", apps[index].Name))
+		SetText(fmt.Sprintf("\nAre you sure you want to delete\n\n[yellow]%s[white]?", apps[appIdx].Name))
 
 	confirmBox := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(confirmText, 0, 1, true)
@@ -276,8 +326,9 @@ func showDeleteConfirm() {
 			return nil
 		}
 		if event.Key() == tcell.KeyEnter {
-			apps = append(apps[:index], apps[index+1:]...)
+			apps = append(apps[:appIdx], apps[appIdx+1:]...)
 			app.SaveApps(apps)
+			resetFilteredIndices()
 			refreshList(index - 1)
 			pages.RemovePage("delete")
 			return nil
