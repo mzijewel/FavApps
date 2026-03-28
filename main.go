@@ -16,8 +16,10 @@ var (
 	pages    *tview.Pages
 	apps     []app.App
 
-	titleColor = "green"
-	helpColor  = "yellow"
+	titleColor          = "green"
+	helpColor           = "yellow"
+	borderNormalColor   = tcell.ColorWhite
+	borderSelectedColor = tcell.ColorGreen
 )
 
 func main() {
@@ -32,20 +34,19 @@ func main() {
 	tviewApp = tview.NewApplication()
 	pages = tview.NewPages()
 
-	tview.Styles.BorderColor = tcell.ColorWhite
+	tview.Styles.BorderColor = borderNormalColor
 
-	list = tview.NewList().ShowSecondaryText(false)
+	list = tview.NewList().ShowSecondaryText(false).
+		SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorGreen).Foreground(tcell.ColorBlack))
 	list.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Favourite Apps ", titleColor)).SetTitleAlign(tview.AlignLeft)
-	list.SetFocusFunc(func() { list.SetBorderColor(tcell.ColorRed) })
-	list.SetBlurFunc(func() { list.SetBorderColor(tcell.ColorWhite) })
+	list.SetFocusFunc(func() { list.SetBorderColor(borderSelectedColor) })
+	list.SetBlurFunc(func() { list.SetBorderColor(borderNormalColor) })
 
 	details = tview.NewTextView().
 		SetDynamicColors(true).
 		SetRegions(true).
 		SetWordWrap(true)
 	details.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Description ", titleColor)).SetTitleAlign(tview.AlignLeft)
-	details.SetFocusFunc(func() { details.SetBorderColor(tcell.ColorRed) })
-	details.SetBlurFunc(func() { details.SetBorderColor(tcell.ColorWhite) })
 
 	refreshList(0)
 
@@ -64,7 +65,7 @@ func main() {
 		AddItem(tview.NewTextView().
 			SetTextAlign(tview.AlignCenter).
 			SetDynamicColors(true).
-			SetText(fmt.Sprintf("[%s](a) Add  (e) Edit  (d) Delete  (Shift+Tab) Config  (q) Quit", helpColor)), 1, 1, false)
+			SetText(fmt.Sprintf("[%s]<a> Add  <e> Edit  <d> Delete  <p> data path  <q> Quit", helpColor)), 1, 1, false)
 
 	pages.AddPage("main", flex, true, true)
 
@@ -74,15 +75,13 @@ func main() {
 			return event
 		}
 
-		if event.Key() == tcell.KeyBacktab {
-			showConfigForm()
-			return nil
-		}
-
 		if event.Key() == tcell.KeyRune {
 			switch event.Rune() {
 			case 'q':
 				tviewApp.Stop()
+				return nil
+			case 'p':
+				showConfigForm()
 				return nil
 			case 'a':
 				showForm(-1)
@@ -109,14 +108,14 @@ func main() {
 
 func showConfigForm() {
 	input := tview.NewInputField().
-		SetText(app.AppsFile).
+		SetText(app.AppsFilePath).
 		SetFieldWidth(40).
 		SetFieldBackgroundColor(tcell.ColorReset)
 	input.SetBorder(true).
 		SetTitle(fmt.Sprintf("[%s] App storage path [json]====== [%s] <Enter> Save <Esc> Cancel ", titleColor, helpColor)).
 		SetTitleAlign(tview.AlignLeft)
-	input.SetFocusFunc(func() { input.SetBorderColor(tcell.ColorRed) })
-	input.SetBlurFunc(func() { input.SetBorderColor(tcell.ColorWhite) })
+	input.SetFocusFunc(func() { input.SetBorderColor(borderSelectedColor) })
+	input.SetBlurFunc(func() { input.SetBorderColor(borderNormalColor) })
 
 	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
@@ -126,7 +125,7 @@ func showConfigForm() {
 		if event.Key() == tcell.KeyEnter {
 			newPath := input.GetText()
 			if newPath != "" {
-				app.AppsFile = newPath
+				app.AppsFilePath = newPath
 				app.SaveConfig(app.Config{AppsFile: newPath})
 				var err error
 				apps, err = app.LoadApps()
@@ -150,7 +149,7 @@ func refreshList(selectedIndex int) {
 	list.SetTitle(fmt.Sprintf("[%s] Favourite Apps (%d) ", titleColor, len(apps)))
 	for i, a := range apps {
 		// Use tview's markup for serial vs name
-		list.AddItem(fmt.Sprintf("[black][%d] [white] %s", i+1, a.Name), "", 0, nil)
+		list.AddItem(fmt.Sprintf("[gray][%d] [white] %s  ", i+1, a.Name), "", 0, nil)
 	}
 
 	if len(apps) > 0 {
@@ -186,15 +185,16 @@ func showForm(index int) {
 		SetText(name).
 		SetFieldBackgroundColor(tcell.ColorReset)
 	nameInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Name ", titleColor)).SetTitleAlign(tview.AlignLeft)
-	nameInput.SetFocusFunc(func() { nameInput.SetBorderColor(tcell.ColorRed) })
-	nameInput.SetBlurFunc(func() { nameInput.SetBorderColor(tcell.ColorWhite) })
+	nameInput.SetFocusFunc(func() { nameInput.SetBorderColor(borderSelectedColor) })
+	nameInput.SetBlurFunc(func() { nameInput.SetBorderColor(borderNormalColor) })
 
 	descInput := tview.NewTextArea().
 		SetPlaceholder("Enter description...").
+		SetPlaceholderStyle(tcell.StyleDefault.Foreground(tcell.ColorGray)).
 		SetText(description, false)
 	descInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Description [%s]<Ctrl+s> Save <Esc> Cancel ", titleColor, helpColor)).SetTitleAlign(tview.AlignLeft)
-	descInput.SetFocusFunc(func() { descInput.SetBorderColor(tcell.ColorRed) })
-	descInput.SetBlurFunc(func() { descInput.SetBorderColor(tcell.ColorWhite) })
+	descInput.SetFocusFunc(func() { descInput.SetBorderColor(borderSelectedColor) })
+	descInput.SetBlurFunc(func() { descInput.SetBorderColor(borderNormalColor) })
 
 	// Layout like lazygit commit message
 	formFlex := tview.NewFlex().SetDirection(tview.FlexRow).
@@ -267,8 +267,8 @@ func showDeleteConfirm() {
 	confirmBox.SetBorder(true).
 		SetTitle(fmt.Sprintf("[%s] Delete [%s] <Enter> Confirm <Esc> Cancel ", titleColor, helpColor)).
 		SetTitleAlign(tview.AlignLeft)
-	confirmBox.SetFocusFunc(func() { confirmBox.SetBorderColor(tcell.ColorRed) })
-	confirmBox.SetBlurFunc(func() { confirmBox.SetBorderColor(tcell.ColorWhite) })
+	confirmBox.SetFocusFunc(func() { confirmBox.SetBorderColor(borderSelectedColor) })
+	confirmBox.SetBlurFunc(func() { confirmBox.SetBorderColor(borderNormalColor) })
 
 	confirmBox.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
