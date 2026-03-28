@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -71,6 +72,10 @@ func LoadApps() ([]App, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	sort.Slice(apps, func(i, j int) bool {
+		return apps[i].Name < apps[j].Name
+	})
 
 	return apps, nil
 }

@@ -125,7 +125,7 @@ func showConfigForm() {
 		SetFieldWidth(40).
 		SetFieldBackgroundColor(tcell.ColorReset)
 	input.SetBorder(true).
-		SetTitle(fmt.Sprintf("[%s] App storage path [json]====== [%s] <Enter> Save <Esc> Cancel ", titleColor, helpColor)).
+		SetTitle(fmt.Sprintf("[%s] App storage path [json] [white]-----[%s] <Enter> Save <Esc> Cancel ", titleColor, helpColor)).
 		SetTitleAlign(tview.AlignLeft)
 	input.SetFocusFunc(func() { input.SetBorderColor(borderSelectedColor) })
 	input.SetBlurFunc(func() { input.SetBorderColor(borderNormalColor) })
@@ -191,7 +191,7 @@ func showSearch() {
 	input := tview.NewInputField().
 		SetFieldBackgroundColor(tcell.ColorReset)
 	input.SetBorder(true).
-		SetTitle(fmt.Sprintf("[%s] Search [%s] <Esc> Close ", titleColor, helpColor)).
+		SetTitle(fmt.Sprintf("[%s] Search [white]----- [%s]<Esc> Close ", titleColor, helpColor)).
 		SetTitleAlign(tview.AlignLeft)
 	input.SetFocusFunc(func() { input.SetBorderColor(borderSelectedColor) })
 	input.SetBlurFunc(func() { input.SetBorderColor(borderNormalColor) })
@@ -240,7 +240,7 @@ func showForm(index int) {
 		SetPlaceholder("Enter description...").
 		SetPlaceholderStyle(tcell.StyleDefault.Foreground(tcell.ColorGray)).
 		SetText(description, false)
-	descInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Description [%s]<Ctrl+s> Save <Esc> Cancel ", titleColor, helpColor)).SetTitleAlign(tview.AlignLeft)
+	descInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Description [white]----- [%s]<Ctrl+s> Save <Esc> Cancel ", titleColor, helpColor)).SetTitleAlign(tview.AlignLeft)
 	descInput.SetFocusFunc(func() { descInput.SetBorderColor(borderSelectedColor) })
 	descInput.SetBlurFunc(func() { descInput.SetBorderColor(borderNormalColor) })
 
@@ -315,7 +315,7 @@ func showDeleteConfirm() {
 	confirmBox := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(confirmText, 0, 1, true)
 	confirmBox.SetBorder(true).
-		SetTitle(fmt.Sprintf("[%s] Delete [%s] <Enter> Confirm <Esc> Cancel ", titleColor, helpColor)).
+		SetTitle(fmt.Sprintf("[%s] Delete [white]----- [%s]<Enter> Confirm <Esc> Cancel ", titleColor, helpColor)).
 		SetTitleAlign(tview.AlignLeft)
 	confirmBox.SetFocusFunc(func() { confirmBox.SetBorderColor(borderSelectedColor) })
 	confirmBox.SetBlurFunc(func() { confirmBox.SetBorderColor(borderNormalColor) })
