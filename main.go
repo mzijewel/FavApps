@@ -22,6 +22,8 @@ var (
 
 func main() {
 	var err error
+	app.LoadConfig()
+
 	apps, err = app.LoadApps()
 	if err != nil {
 		panic(err)
@@ -39,7 +41,7 @@ func main() {
 		SetWordWrap(true)
 	details.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Description ", titleColor)).SetTitleAlign(tview.AlignLeft)
 
-	refreshList()
+	refreshList(0)
 
 	list.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
 		// This can be used to edit, but we'll use shortcuts instead
@@ -56,7 +58,7 @@ func main() {
 		AddItem(tview.NewTextView().
 			SetTextAlign(tview.AlignCenter).
 			SetDynamicColors(true).
-			SetText(fmt.Sprintf("[%s](a) Add  (e) Edit  (d) Delete  (q) Quit", helpColor)), 1, 1, false)
+			SetText(fmt.Sprintf("[%s](a) Add  (e) Edit  (d) Delete  (Shift+Tab) Config  (q) Quit", helpColor)), 1, 1, false)
 
 	pages.AddPage("main", flex, true, true)
 
@@ -64,6 +66,11 @@ func main() {
 		frontPage, _ := pages.GetFrontPage()
 		if frontPage != "main" {
 			return event
+		}
+
+		if event.Key() == tcell.KeyBacktab {
+			showConfigForm()
+			return nil
 		}
 
 		if event.Key() == tcell.KeyRune {
@@ -94,17 +101,59 @@ func main() {
 	}
 }
 
-func refreshList() {
+func showConfigForm() {
+	input := tview.NewInputField().
+		SetLabel("Apps File Path: ").
+		SetText(app.AppsFile).
+		SetFieldWidth(40)
+	input.SetBorder(true).
+		SetTitle(fmt.Sprintf("[%s] Config [%s] <Enter> Save <Esc> Cancel ", titleColor, helpColor)).
+		SetTitleAlign(tview.AlignLeft)
+
+	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			pages.RemovePage("config")
+			return nil
+		}
+		if event.Key() == tcell.KeyEnter {
+			newPath := input.GetText()
+			if newPath != "" {
+				app.AppsFile = newPath
+				app.SaveConfig(app.Config{AppsFile: newPath})
+				var err error
+				apps, err = app.LoadApps()
+				if err != nil {
+					// Handle error, maybe show alert, but for now just refresh
+				}
+				refreshList(0)
+				pages.RemovePage("config")
+			}
+			return nil
+		}
+		return event
+	})
+
+	pages.AddPage("config", modal(input, 60, 3), true, true)
+	tviewApp.SetFocus(input)
+}
+
+func refreshList(selectedIndex int) {
 	list.Clear()
 	list.SetTitle(fmt.Sprintf("[%s] Favourite Apps (%d) ", titleColor, len(apps)))
 	for i, a := range apps {
 		// Use tview's markup for serial vs name
 		list.AddItem(fmt.Sprintf("[black][%d] [white] %s", i+1, a.Name), "", 0, nil)
-		if i == 0 {
-			updateDetails(0)
-		}
 	}
-	if len(apps) == 0 {
+
+	if len(apps) > 0 {
+		if selectedIndex < 0 {
+			selectedIndex = 0
+		} else if selectedIndex >= len(apps) {
+			selectedIndex = len(apps) - 1
+		}
+		list.SetCurrentItem(selectedIndex)
+		updateDetails(selectedIndex)
+	} else {
 		details.Clear()
 	}
 }
@@ -167,9 +216,10 @@ func showForm(index int) {
 				apps[index] = newApp
 			} else {
 				apps = append(apps, newApp)
+				index = len(apps) - 1
 			}
 			app.SaveApps(apps)
-			refreshList()
+			refreshList(index)
 			pages.RemovePage("form")
 			return nil
 		}
@@ -214,7 +264,7 @@ func showDeleteConfirm() {
 		if event.Key() == tcell.KeyEnter {
 			apps = append(apps[:index], apps[index+1:]...)
 			app.SaveApps(apps)
-			refreshList()
+			refreshList(index - 1)
 			pages.RemovePage("delete")
 			return nil
 		}
