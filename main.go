@@ -130,17 +130,12 @@ func showForm(index int) {
 	descInput := tview.NewTextArea().
 		SetPlaceholder("Enter description...").
 		SetText(description, false)
-	descInput.SetBorder(true).SetTitle(" Description ").SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorYellow)
+	descInput.SetBorder(true).SetTitle(" Description | <Ctrl+s> Save <Esc> Cancel ").SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorYellow)
 
 	// Layout like lazygit commit message
 	formFlex := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(nameInput, 3, 1, true).
-		AddItem(descInput, 0, 1, false).
-		AddItem(tview.NewTextView().
-			SetTextAlign(tview.AlignCenter).
-			SetDynamicColors(true).
-			SetText("(Ctrl+S) Save  (Esc) Cancel"), 1, 1, false)
-
+		AddItem(descInput, 0, 1, false)
 	// Input capture for name input to handle Enter
 	nameInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
@@ -200,11 +195,14 @@ func showDeleteConfirm() {
 	confirmText := tview.NewTextView().
 		SetTextAlign(tview.AlignCenter).
 		SetDynamicColors(true).
-		SetText(fmt.Sprintf("\nAre you sure you want to delete\n\n[yellow]%s[white]?\n\n\n(Enter) Confirm  (Esc) Cancel", apps[index].Name))
+		SetText(fmt.Sprintf("\nAre you sure you want to delete\n\n[yellow]%s[white]?", apps[index].Name))
 
 	confirmBox := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(confirmText, 0, 1, true)
-	confirmBox.SetBorder(true).SetTitle(" Delete ").SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorYellow)
+	confirmBox.SetBorder(true).
+		SetTitle(" Delete | (Enter) Confirm (Esc) Cancel ").
+		SetTitleAlign(tview.AlignLeft).
+		SetTitleColor(tcell.ColorYellow)
 
 	confirmBox.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
@@ -221,7 +219,7 @@ func showDeleteConfirm() {
 		return event
 	})
 
-	pages.AddPage("delete", modal(confirmBox, 60, 10), true, true)
+	pages.AddPage("delete", modal(confirmBox, 60, 8), true, true)
 }
 
 func modal(p tview.Primitive, width, height int) tview.Primitive {
