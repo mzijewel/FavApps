@@ -15,6 +15,9 @@ var (
 	flex     *tview.Flex
 	pages    *tview.Pages
 	apps     []app.App
+
+	titleColor = "green"
+	helpColor  = "yellow"
 )
 
 func main() {
@@ -28,13 +31,13 @@ func main() {
 	pages = tview.NewPages()
 
 	list = tview.NewList().ShowSecondaryText(false)
-	list.SetBorder(true).SetTitle(" Favourite Apps ").SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorYellow)
+	list.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Favourite Apps ", titleColor)).SetTitleAlign(tview.AlignLeft)
 
 	details = tview.NewTextView().
 		SetDynamicColors(true).
 		SetRegions(true).
 		SetWordWrap(true)
-	details.SetBorder(true).SetTitle(" Description ").SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorYellow)
+	details.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Description ", titleColor)).SetTitleAlign(tview.AlignLeft)
 
 	refreshList()
 
@@ -53,7 +56,7 @@ func main() {
 		AddItem(tview.NewTextView().
 			SetTextAlign(tview.AlignCenter).
 			SetDynamicColors(true).
-			SetText("[yellow](a) Add  (e) Edit  (d) Delete  (q) Quit"), 1, 1, false)
+			SetText(fmt.Sprintf("[%s](a) Add  (e) Edit  (d) Delete  (q) Quit", helpColor)), 1, 1, false)
 
 	pages.AddPage("main", flex, true, true)
 
@@ -93,10 +96,10 @@ func main() {
 
 func refreshList() {
 	list.Clear()
-	list.SetTitle(fmt.Sprintf(" Favourite Apps (%d) ", len(apps)))
+	list.SetTitle(fmt.Sprintf("[%s] Favourite Apps (%d) ", titleColor, len(apps)))
 	for i, a := range apps {
 		// Use tview's markup for serial vs name
-		list.AddItem(fmt.Sprintf("[green]%d.[white] %s", i+1, a.Name), "", 0, nil)
+		list.AddItem(fmt.Sprintf("[black][%d] [white] %s", i+1, a.Name), "", 0, nil)
 		if i == 0 {
 			updateDetails(0)
 		}
@@ -125,12 +128,12 @@ func showForm(index int) {
 	nameInput := tview.NewInputField().
 		SetText(name).
 		SetFieldBackgroundColor(tcell.ColorReset)
-	nameInput.SetBorder(true).SetTitle(" Name ").SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorYellow)
+	nameInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Name ", titleColor)).SetTitleAlign(tview.AlignLeft)
 
 	descInput := tview.NewTextArea().
 		SetPlaceholder("Enter description...").
 		SetText(description, false)
-	descInput.SetBorder(true).SetTitle(" Description | <Ctrl+s> Save <Esc> Cancel ").SetTitleAlign(tview.AlignLeft).SetTitleColor(tcell.ColorYellow)
+	descInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Description [%s]<Ctrl+s> Save <Esc> Cancel ", titleColor, helpColor)).SetTitleAlign(tview.AlignLeft)
 
 	// Layout like lazygit commit message
 	formFlex := tview.NewFlex().SetDirection(tview.FlexRow).
@@ -200,9 +203,8 @@ func showDeleteConfirm() {
 	confirmBox := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(confirmText, 0, 1, true)
 	confirmBox.SetBorder(true).
-		SetTitle(" Delete | (Enter) Confirm (Esc) Cancel ").
-		SetTitleAlign(tview.AlignLeft).
-		SetTitleColor(tcell.ColorYellow)
+		SetTitle(fmt.Sprintf("[%s] Delete [%s] <Enter> Confirm <Esc> Cancel ", titleColor, helpColor)).
+		SetTitleAlign(tview.AlignLeft)
 
 	confirmBox.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
