@@ -23,6 +23,10 @@ var (
 	filteredIndices []int
 	selectedIndices map[int]bool // Track multi-selected items by their index in filteredIndices
 
+	lastSearchText   string            // Store last search text for restoration
+	searchBoxVisible bool              // Track if search box is currently visible
+	searchInput      *tview.InputField // Reference to search input field
+
 	titleColor          = "green"
 	helpColor           = "yellow"
 	borderNormalColor   = tcell.ColorWhite
@@ -91,6 +95,15 @@ func main() {
 			return event
 		}
 
+		if event.Key() == tcell.KeyEsc {
+			// ESC pressed: if filter is active, reset it
+			if lastSearchText != "" {
+				resetFilter()
+				return nil
+			}
+			return event
+		}
+
 		if event.Key() == tcell.KeyRune {
 			switch event.Rune() {
 			case 'q':
@@ -150,6 +163,13 @@ func resetFilteredIndices() {
 	selectedIndices = make(map[int]bool) // Clear selection when filter changes
 }
 
+func resetFilter() {
+	lastSearchText = ""
+	searchBoxVisible = false
+	resetFilteredIndices()
+	refreshList(0)
+}
+
 func showConfigForm() {
 	input := tview.NewInputField().
 		SetText(app.AppsFilePath).
@@ -194,17 +214,14 @@ func refreshList(selectedIndex int) {
 	list.SetTitle(fmt.Sprintf("[%s] Favourite Apps (%d) ", titleColor, len(filteredIndices)))
 	for i, idx := range filteredIndices {
 		a := apps[idx]
-		cmdIndicator := ""
-		if a.Cmd != "" {
-			cmdIndicator = "[cyan][cmd] [white]"
-		}
+
 		// Show selection indicator for multi-select
 		selectionIndicator := "  "
 		if selectedIndices[i] {
 			selectionIndicator = "[green]✓ [white]"
 		}
 		// Use tview's markup for serial vs name
-		list.AddItem(fmt.Sprintf("[gray][%d] [white] %s %s %s", i+1, selectionIndicator, cmdIndicator, a.Name), "", 0, nil)
+		list.AddItem(fmt.Sprintf("[gray][%d] [white] %s %s", i+1, selectionIndicator, a.Name), "", 0, nil)
 	}
 
 	if len(filteredIndices) > 0 {
@@ -235,20 +252,27 @@ func updateDetails(index int) {
 }
 
 func showSearch() {
+	searchBoxVisible = true
 	input := tview.NewInputField().
+		SetText(lastSearchText).
 		SetFieldBackgroundColor(tcell.ColorReset)
 	input.SetBorder(true).
-		SetTitle(fmt.Sprintf("[%s] Search [white]----- [%s]<Esc> Close ", titleColor, helpColor)).
+		SetTitle(fmt.Sprintf("[%s] Search [white]----- [%s]<Esc> Hide <Enter> Close ", titleColor, helpColor)).
 		SetTitleAlign(tview.AlignLeft)
 	input.SetFocusFunc(func() { input.SetBorderColor(borderSelectedColor) })
 	input.SetBlurFunc(func() { input.SetBorderColor(borderNormalColor) })
 
+	searchInput = input
+
 	input.SetChangedFunc(func(text string) {
+		lastSearchText = text
 		filteredIndices = nil
+		searchLower := strings.ToLower(text)
 		for i, a := range apps {
 			if text == "" ||
-				strings.Contains(strings.ToLower(a.Name), strings.ToLower(text)) ||
-				strings.Contains(strings.ToLower(a.Description), strings.ToLower(text)) {
+				strings.Contains(strings.ToLower(a.Name), searchLower) ||
+				strings.Contains(strings.ToLower(a.Description), searchLower) ||
+				strings.Contains(strings.ToLower(a.Cmd), searchLower) {
 				filteredIndices = append(filteredIndices, i)
 			}
 		}
@@ -257,8 +281,17 @@ func showSearch() {
 	})
 
 	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEsc || event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyUp || event.Key() == tcell.KeyDown {
+		if event.Key() == tcell.KeyEsc {
+			// Hide search box but keep filter active
+			searchBoxVisible = false
 			pages.RemovePage("search")
+			tviewApp.SetFocus(list)
+			return nil
+		}
+		if event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyUp || event.Key() == tcell.KeyDown {
+			// Close search but keep filter active
+			pages.RemovePage("search")
+			tviewApp.SetFocus(list)
 			return nil
 		}
 		return event
@@ -349,7 +382,7 @@ func runInstallCmd(index int) {
 				"no action needed",
 				"latest version",
 			}
-			
+
 			isAlreadyInstalled := false
 			outputLower := strings.ToLower(outputStr)
 			for _, pattern := range alreadyInstalledPatterns {
@@ -502,11 +535,11 @@ func showDeleteConfirm() {
 				selectedNames = append(selectedNames, apps[appIdx].Name)
 			}
 		}
-		
+
 		confirmText := tview.NewTextView().
 			SetTextAlign(tview.AlignCenter).
 			SetDynamicColors(true)
-		
+
 		if len(selectedNames) == 1 {
 			confirmText.SetText(fmt.Sprintf("\nAre you sure you want to delete\n\n[yellow]%s[white]?", selectedNames[0]))
 		} else {
@@ -542,11 +575,11 @@ func showDeleteConfirm() {
 				sort.Slice(indicesToDelete, func(i, j int) bool {
 					return indicesToDelete[i] > indicesToDelete[j]
 				})
-				
+
 				for _, appIdx := range indicesToDelete {
 					apps = append(apps[:appIdx], apps[appIdx+1:]...)
 				}
-				
+
 				app.SaveApps(apps)
 				selectedIndices = make(map[int]bool) // Clear selection
 				resetFilteredIndices()
