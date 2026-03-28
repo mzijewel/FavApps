@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 )
 
 var AppsFile = "apps.json"
@@ -32,6 +33,10 @@ func LoadConfig() (Config, error) {
 }
 
 func SaveConfig(config Config) error {
+	dir := filepath.Dir(configFile)
+	if dir != "." {
+		os.MkdirAll(dir, 0755)
+	}
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return err
@@ -60,6 +65,10 @@ func LoadApps() ([]App, error) {
 }
 
 func SaveApps(apps []App) error {
+	dir := filepath.Dir(AppsFile)
+	if dir != "." {
+		os.MkdirAll(dir, 0755)
+	}
 	data, err := json.MarshalIndent(apps, "", "  ")
 	if err != nil {
 		return err
