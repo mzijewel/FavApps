@@ -244,13 +244,24 @@ func showForm(index int) {
 	descInput.SetFocusFunc(func() { descInput.SetBorderColor(borderSelectedColor) })
 	descInput.SetBlurFunc(func() { descInput.SetBorderColor(borderNormalColor) })
 
+	errorText := tview.NewTextView().
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignCenter)
+
 	// Layout like lazygit commit message
 	formFlex := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(nameInput, 3, 1, true).
-		AddItem(descInput, 0, 1, false)
+		AddItem(descInput, 0, 1, false).
+		AddItem(errorText, 2, 1, false)
+
 	// Input capture for name input to handle Enter
 	nameInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEnter {
+			if nameInput.GetText() == "" {
+				errorText.SetText("[red]Name cannot be empty")
+				return nil
+			}
+			errorText.SetText("")
 			tviewApp.SetFocus(descInput)
 			return nil
 		}
@@ -268,6 +279,7 @@ func showForm(index int) {
 			newName := nameInput.GetText()
 			newDesc := descInput.GetText()
 			if newName == "" {
+				errorText.SetText("[red]Name cannot be empty")
 				return nil
 			}
 
