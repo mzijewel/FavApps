@@ -3,6 +3,8 @@ package main
 import (
 	"favapss/app"
 	"fmt"
+	"os/exec"
+	"sort"
 	"strings"
 
 	"github.com/atotto/clipboard"
@@ -19,6 +21,7 @@ var (
 	pages           *tview.Pages
 	apps            []app.App
 	filteredIndices []int
+	selectedIndices map[int]bool // Track multi-selected items by their index in filteredIndices
 
 	titleColor          = "green"
 	helpColor           = "yellow"
@@ -35,6 +38,7 @@ func main() {
 		panic(err)
 	}
 	resetFilteredIndices()
+	selectedIndices = make(map[int]bool)
 
 	tviewApp = tview.NewApplication()
 	pages = tview.NewPages()
@@ -77,7 +81,7 @@ func main() {
 		AddItem(tview.NewTextView().
 			SetTextAlign(tview.AlignCenter).
 			SetDynamicColors(true).
-			SetText(fmt.Sprintf("[%s]<a> Add  <e> Edit  <d> Delete  <c> Copy cmd  <p> data path  </> Search  <q> Quit", helpColor)), 1, 1, false)
+			SetText(fmt.Sprintf("[%s]<a> Add  <e> Edit  <d> Delete  <Space> Select  <Enter> Run  <c> Copy  </> Search  <q> Quit", helpColor)), 1, 1, false)
 
 	pages.AddPage("main", flex, true, true)
 
@@ -113,8 +117,20 @@ func main() {
 					copyInstallCmd(list.GetCurrentItem())
 					return nil
 				}
+			case ' ':
+				if len(filteredIndices) > 0 {
+					toggleSelection(list.GetCurrentItem())
+					return nil
+				}
 			case '/':
 				showSearch()
+				return nil
+			}
+		}
+		// Enter to run install command
+		if event.Key() == tcell.KeyEnter {
+			if len(filteredIndices) > 0 {
+				runInstallCmd(list.GetCurrentItem())
 				return nil
 			}
 		}
@@ -131,6 +147,7 @@ func resetFilteredIndices() {
 	for i := range apps {
 		filteredIndices = append(filteredIndices, i)
 	}
+	selectedIndices = make(map[int]bool) // Clear selection when filter changes
 }
 
 func showConfigForm() {
@@ -181,8 +198,13 @@ func refreshList(selectedIndex int) {
 		if a.Cmd != "" {
 			cmdIndicator = "[cyan][cmd] [white]"
 		}
+		// Show selection indicator for multi-select
+		selectionIndicator := "  "
+		if selectedIndices[i] {
+			selectionIndicator = "[green]✓ [white]"
+		}
 		// Use tview's markup for serial vs name
-		list.AddItem(fmt.Sprintf("[gray][%d] [white] %s  %s", i+1, cmdIndicator, a.Name), "", 0, nil)
+		list.AddItem(fmt.Sprintf("[gray][%d] [white] %s %s %s", i+1, selectionIndicator, cmdIndicator, a.Name), "", 0, nil)
 	}
 
 	if len(filteredIndices) > 0 {
@@ -230,6 +252,7 @@ func showSearch() {
 				filteredIndices = append(filteredIndices, i)
 			}
 		}
+		selectedIndices = make(map[int]bool) // Clear selection when filter changes
 		refreshList(0)
 	})
 
@@ -257,6 +280,99 @@ func copyInstallCmd(index int) {
 	clipboard.WriteAll(cmd)
 	cmdView.Clear()
 	fmt.Fprintf(cmdView, "[cyan]%s [green](Copied!)", cmd)
+}
+
+func toggleSelection(index int) {
+	if index < 0 || index >= len(filteredIndices) {
+		return
+	}
+	// Toggle selection state
+	if selectedIndices[index] {
+		delete(selectedIndices, index)
+	} else {
+		selectedIndices[index] = true
+	}
+	refreshList(index)
+}
+
+func runInstallCmd(index int) {
+	if index < 0 || index >= len(filteredIndices) {
+		return
+	}
+	appIdx := filteredIndices[index]
+	cmd := apps[appIdx].Cmd
+	if cmd == "" {
+		return
+	}
+
+	// Create output view for command execution
+	outputView := tview.NewTextView().
+		SetDynamicColors(true).
+		SetWordWrap(true)
+	outputView.SetBorder(true).
+		SetTitle(fmt.Sprintf("[%s] Running Command [white]----- [%s]<Esc> Close ", titleColor, helpColor)).
+		SetTitleAlign(tview.AlignLeft)
+
+	fmt.Fprintf(outputView, "[cyan]Running:[white] %s\n\n", cmd)
+	outputView.ScrollToEnd()
+
+	// Set up input capture for the output view
+	outputView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			pages.RemovePage("runCmd")
+			return nil
+		}
+		return event
+	})
+
+	// Create modal
+	modalView := modal(outputView, 80, 20)
+	pages.AddPage("runCmd", modalView, true, true)
+
+	// Run command in goroutine
+	go func() {
+		tviewApp.QueueUpdateDraw(func() {
+			fmt.Fprintf(outputView, "[yellow]Executing...[white]\n")
+		})
+
+		cmdExec := exec.Command("sh", "-c", cmd)
+		output, err := cmdExec.CombinedOutput()
+		outputStr := string(output)
+
+		tviewApp.QueueUpdateDraw(func() {
+			// Check if already installed (common package manager messages)
+			alreadyInstalledPatterns := []string{
+				"already installed",
+				"is already installed",
+				"up-to-date",
+				"up to date",
+				"no action needed",
+				"latest version",
+			}
+			
+			isAlreadyInstalled := false
+			outputLower := strings.ToLower(outputStr)
+			for _, pattern := range alreadyInstalledPatterns {
+				if strings.Contains(outputLower, pattern) {
+					isAlreadyInstalled = true
+					break
+				}
+			}
+
+			if isAlreadyInstalled {
+				fmt.Fprintf(outputView, "\n[yellow]Already installed![white]\n")
+			} else if err != nil {
+				fmt.Fprintf(outputView, "\n[red]Error:[white] %v\n", err)
+			} else {
+				fmt.Fprintf(outputView, "\n[green]Success![white]\n")
+			}
+			if len(outputStr) > 0 {
+				fmt.Fprintf(outputView, "\n[cyan]Output:[white]\n%s", outputStr)
+			}
+		})
+	}()
+
+	tviewApp.SetFocus(outputView)
 }
 
 func showForm(index int) {
@@ -376,6 +492,75 @@ func showForm(index int) {
 }
 
 func showDeleteConfirm() {
+	// Check if there are selected items (multi-select)
+	if len(selectedIndices) > 0 {
+		// Build list of selected app names for confirmation
+		selectedNames := []string{}
+		for listIdx := range selectedIndices {
+			if listIdx < len(filteredIndices) {
+				appIdx := filteredIndices[listIdx]
+				selectedNames = append(selectedNames, apps[appIdx].Name)
+			}
+		}
+		
+		confirmText := tview.NewTextView().
+			SetTextAlign(tview.AlignCenter).
+			SetDynamicColors(true)
+		
+		if len(selectedNames) == 1 {
+			confirmText.SetText(fmt.Sprintf("\nAre you sure you want to delete\n\n[yellow]%s[white]?", selectedNames[0]))
+		} else {
+			namesList := ""
+			for _, name := range selectedNames {
+				namesList += fmt.Sprintf("\n[yellow]• %s[white]", name)
+			}
+			confirmText.SetText(fmt.Sprintf("\nAre you sure you want to delete [red]%d[white] apps?%s", len(selectedNames), namesList))
+		}
+
+		confirmBox := tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(confirmText, 0, 1, true)
+		confirmBox.SetBorder(true).
+			SetTitle(fmt.Sprintf("[%s] Delete [white]----- [%s]<Enter> Confirm <Esc> Cancel ", titleColor, helpColor)).
+			SetTitleAlign(tview.AlignLeft)
+		confirmBox.SetFocusFunc(func() { confirmBox.SetBorderColor(borderSelectedColor) })
+		confirmBox.SetBlurFunc(func() { confirmBox.SetBorderColor(borderNormalColor) })
+
+		confirmBox.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEsc {
+				pages.RemovePage("delete")
+				return nil
+			}
+			if event.Key() == tcell.KeyEnter {
+				// Delete selected items (in reverse order to maintain indices)
+				indicesToDelete := []int{}
+				for listIdx := range selectedIndices {
+					if listIdx < len(filteredIndices) {
+						indicesToDelete = append(indicesToDelete, filteredIndices[listIdx])
+					}
+				}
+				// Sort in descending order to delete from end first
+				sort.Slice(indicesToDelete, func(i, j int) bool {
+					return indicesToDelete[i] > indicesToDelete[j]
+				})
+				
+				for _, appIdx := range indicesToDelete {
+					apps = append(apps[:appIdx], apps[appIdx+1:]...)
+				}
+				
+				app.SaveApps(apps)
+				selectedIndices = make(map[int]bool) // Clear selection
+				resetFilteredIndices()
+				refreshList(0)
+				pages.RemovePage("delete")
+			}
+			return event
+		})
+
+		pages.AddPage("delete", modal(confirmBox, 60, 12), true, true)
+		return
+	}
+
+	// No selected items, delete current item (existing behavior)
 	index := list.GetCurrentItem()
 	if index < 0 || index >= len(filteredIndices) {
 		return
@@ -406,7 +591,6 @@ func showDeleteConfirm() {
 			resetFilteredIndices()
 			refreshList(index - 1)
 			pages.RemovePage("delete")
-			return nil
 		}
 		return event
 	})
