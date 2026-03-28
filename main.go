@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -13,6 +14,7 @@ var (
 	tviewApp        *tview.Application
 	list            *tview.List
 	details         *tview.TextView
+	cmdView         *tview.TextView
 	flex            *tview.Flex
 	pages           *tview.Pages
 	apps            []app.App
@@ -51,6 +53,11 @@ func main() {
 		SetWordWrap(true)
 	details.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Description ", titleColor)).SetTitleAlign(tview.AlignLeft)
 
+	cmdView = tview.NewTextView().
+		SetDynamicColors(true).
+		SetWordWrap(true)
+	cmdView.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Install Command ", titleColor)).SetTitleAlign(tview.AlignLeft)
+
 	refreshList(0)
 
 	list.SetSelectedFunc(func(index int, mainText string, secondaryText string, shortcut rune) {
@@ -64,11 +71,13 @@ func main() {
 	flex = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(tview.NewFlex().
 			AddItem(list, 0, 1, true).
-			AddItem(details, 0, 2, false), 0, 1, true).
+			AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+				AddItem(details, 0, 3, false).
+				AddItem(cmdView, 0, 1, false), 0, 2, false), 0, 1, true).
 		AddItem(tview.NewTextView().
 			SetTextAlign(tview.AlignCenter).
 			SetDynamicColors(true).
-			SetText(fmt.Sprintf("[%s]<a> Add  <e> Edit  <d> Delete  <p> data path  </> Search  <q> Quit", helpColor)), 1, 1, false)
+			SetText(fmt.Sprintf("[%s]<a> Add  <e> Edit  <d> Delete  <c> Copy cmd  <p> data path  </> Search  <q> Quit", helpColor)), 1, 1, false)
 
 	pages.AddPage("main", flex, true, true)
 
@@ -97,6 +106,11 @@ func main() {
 			case 'd':
 				if len(filteredIndices) > 0 {
 					showDeleteConfirm()
+					return nil
+				}
+			case 'c':
+				if len(filteredIndices) > 0 {
+					copyInstallCmd(list.GetCurrentItem())
 					return nil
 				}
 			case '/':
@@ -163,8 +177,12 @@ func refreshList(selectedIndex int) {
 	list.SetTitle(fmt.Sprintf("[%s] Favourite Apps (%d) ", titleColor, len(filteredIndices)))
 	for i, idx := range filteredIndices {
 		a := apps[idx]
+		cmdIndicator := ""
+		if a.Cmd != "" {
+			cmdIndicator = "[cyan][cmd] [white]"
+		}
 		// Use tview's markup for serial vs name
-		list.AddItem(fmt.Sprintf("[gray][%d] [white] %s  ", i+1, a.Name), "", 0, nil)
+		list.AddItem(fmt.Sprintf("[gray][%d] [white] %s  %s", i+1, cmdIndicator, a.Name), "", 0, nil)
 	}
 
 	if len(filteredIndices) > 0 {
@@ -177,6 +195,7 @@ func refreshList(selectedIndex int) {
 		updateDetails(selectedIndex)
 	} else {
 		details.Clear()
+		cmdView.Clear()
 	}
 }
 
@@ -184,6 +203,12 @@ func updateDetails(index int) {
 	if index >= 0 && index < len(filteredIndices) {
 		details.Clear()
 		fmt.Fprintf(details, "%s", apps[filteredIndices[index]].Description)
+
+		cmdView.Clear()
+		cmd := apps[filteredIndices[index]].Cmd
+		if cmd != "" {
+			fmt.Fprintf(cmdView, "[cyan]%s", cmd)
+		}
 	}
 }
 
@@ -209,7 +234,7 @@ func showSearch() {
 	})
 
 	input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEsc || event.Key() == tcell.KeyEnter {
+		if event.Key() == tcell.KeyEsc || event.Key() == tcell.KeyEnter || event.Key() == tcell.KeyUp || event.Key() == tcell.KeyDown {
 			pages.RemovePage("search")
 			return nil
 		}
@@ -220,13 +245,29 @@ func showSearch() {
 	tviewApp.SetFocus(input)
 }
 
+func copyInstallCmd(index int) {
+	if index < 0 || index >= len(filteredIndices) {
+		return
+	}
+	appIdx := filteredIndices[index]
+	cmd := apps[appIdx].Cmd
+	if cmd == "" {
+		return
+	}
+	clipboard.WriteAll(cmd)
+	cmdView.Clear()
+	fmt.Fprintf(cmdView, "[cyan]%s [green](Copied!)", cmd)
+}
+
 func showForm(index int) {
 	name := ""
 	description := ""
+	cmd := ""
 
 	if index >= 0 && index < len(filteredIndices) {
 		name = apps[filteredIndices[index]].Name
 		description = apps[filteredIndices[index]].Description
+		cmd = apps[filteredIndices[index]].Cmd
 	}
 
 	nameInput := tview.NewInputField().
@@ -244,6 +285,13 @@ func showForm(index int) {
 	descInput.SetFocusFunc(func() { descInput.SetBorderColor(borderSelectedColor) })
 	descInput.SetBlurFunc(func() { descInput.SetBorderColor(borderNormalColor) })
 
+	cmdInput := tview.NewInputField().
+		SetText(cmd).
+		SetFieldBackgroundColor(tcell.ColorReset)
+	cmdInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Install Cmd ", titleColor)).SetTitleAlign(tview.AlignLeft)
+	cmdInput.SetFocusFunc(func() { cmdInput.SetBorderColor(borderSelectedColor) })
+	cmdInput.SetBlurFunc(func() { cmdInput.SetBorderColor(borderNormalColor) })
+
 	errorText := tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignCenter)
@@ -252,6 +300,7 @@ func showForm(index int) {
 	formFlex := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(nameInput, 3, 1, true).
 		AddItem(descInput, 0, 1, false).
+		AddItem(cmdInput, 3, 1, false).
 		AddItem(errorText, 2, 1, false)
 
 	// Input capture for name input to handle Enter
@@ -278,12 +327,24 @@ func showForm(index int) {
 		if event.Key() == tcell.KeyCtrlS {
 			newName := nameInput.GetText()
 			newDesc := descInput.GetText()
+			newCmd := cmdInput.GetText()
 			if newName == "" {
 				errorText.SetText("[red]Name cannot be empty")
 				return nil
 			}
 
-			newApp := app.App{Name: newName, Description: newDesc}
+			// Check for duplicate name
+			for i, a := range apps {
+				if index >= 0 && i == filteredIndices[index] {
+					continue // skip current app when editing
+				}
+				if strings.EqualFold(a.Name, newName) {
+					errorText.SetText("[red]Name already exists")
+					return nil
+				}
+			}
+
+			newApp := app.App{Name: newName, Description: newDesc, Cmd: newCmd}
 			if index >= 0 {
 				apps[filteredIndices[index]] = newApp
 			} else {
@@ -300,6 +361,8 @@ func showForm(index int) {
 		if event.Key() == tcell.KeyTab {
 			if nameInput.HasFocus() {
 				tviewApp.SetFocus(descInput)
+			} else if descInput.HasFocus() {
+				tviewApp.SetFocus(cmdInput)
 			} else {
 				tviewApp.SetFocus(nameInput)
 			}
