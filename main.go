@@ -27,8 +27,8 @@ var (
 	searchInput      *tview.InputField // Reference to search input field
 
 	titleColor          = "green"
-	helpColor           = "yellow"
-	borderNormalColor   = tcell.ColorWhite
+	helpColor           = "blue"
+	borderNormalColor   = tcell.ColorBlack
 	borderSelectedColor = tcell.ColorGreen
 )
 
@@ -47,9 +47,10 @@ func main() {
 	pages = tview.NewPages()
 
 	tview.Styles.BorderColor = borderNormalColor
+	tview.Styles.PrimitiveBackgroundColor = tcell.ColorDefault
 
 	list = tview.NewList().ShowSecondaryText(false).
-		SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorGreen).Foreground(tcell.ColorBlack))
+		SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorGreen).Foreground(tcell.ColorDefault))
 	list.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Favourite Apps ", titleColor)).SetTitleAlign(tview.AlignLeft)
 	list.SetFocusFunc(func() { list.SetBorderColor(borderSelectedColor) })
 	list.SetBlurFunc(func() { list.SetBorderColor(borderNormalColor) })
@@ -179,7 +180,7 @@ func showConfigForm() {
 	input := tview.NewInputField().
 		SetText(app.AppsFilePath).
 		SetFieldWidth(40).
-		SetFieldBackgroundColor(tcell.ColorReset)
+		SetFieldBackgroundColor(tcell.ColorReset).SetFieldTextColor(tcell.ColorBlack)
 	input.SetBorder(true).
 		SetTitle(fmt.Sprintf("[%s] App storage path [json] [white]-----[%s] <Enter> Save <Esc> Cancel ", titleColor, helpColor)).
 		SetTitleAlign(tview.AlignLeft)
@@ -223,11 +224,11 @@ func refreshList(selectedIndex int) {
 		// Show selection indicator for multi-select
 		selectionIndicator := " "
 		if selectedIndices[a.Name] {
-			selectionIndicator = "[green]✓[white] "
+			selectionIndicator = "[green]✓[black] "
 		}
 
 		// Use tview's markup for serial vs name
-		list.AddItem(fmt.Sprintf("[gray][%d][white] %s%s", i+1, selectionIndicator, a.Name), "", 0, nil)
+		list.AddItem(fmt.Sprintf("[gray][%d][black] %s%s ", i+1, selectionIndicator, a.Name), "", 0, nil)
 	}
 
 	if len(filteredIndices) > 0 {
@@ -247,12 +248,12 @@ func refreshList(selectedIndex int) {
 func updateDetails(index int) {
 	if index >= 0 && index < len(filteredIndices) {
 		details.Clear()
-		fmt.Fprintf(details, "%s", apps[filteredIndices[index]].Description)
+		fmt.Fprintf(details, "[black]%s", apps[filteredIndices[index]].Description)
 
 		cmdView.Clear()
 		cmd := apps[filteredIndices[index]].Cmd
 		if cmd != "" {
-			fmt.Fprintf(cmdView, "[cyan]%s", cmd)
+			fmt.Fprintf(cmdView, "[black]%s", cmd)
 		}
 	}
 }
@@ -261,7 +262,7 @@ func showSearch() {
 	searchBoxVisible = true
 	input := tview.NewInputField().
 		SetText(lastSearchText).
-		SetFieldBackgroundColor(tcell.ColorReset)
+		SetFieldBackgroundColor(tcell.ColorReset).SetFieldTextColor(tcell.ColorBlack)
 	input.SetBorder(true).
 		SetTitle(fmt.Sprintf("[%s] Search [white]----- [%s]<Esc> Hide <Enter> Close ", titleColor, helpColor)).
 		SetTitleAlign(tview.AlignLeft)
@@ -642,20 +643,21 @@ func showForm(index int) {
 
 	nameInput := tview.NewInputField().
 		SetText(name).
-		SetFieldBackgroundColor(tcell.ColorReset)
+		SetFieldBackgroundColor(tcell.ColorReset).SetFieldTextColor(tcell.ColorBlack)
 	nameInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Name ", titleColor)).SetTitleAlign(tview.AlignLeft)
 	nameInput.SetFocusFunc(func() { nameInput.SetBorderColor(borderSelectedColor) })
 	nameInput.SetBlurFunc(func() { nameInput.SetBorderColor(borderNormalColor) })
 
 	descInput := tview.NewTextArea(). // SetPlaceholderStyle(tcell.StyleDefault.Foreground(tcell.ColorGray)).
-						SetText(description, false)
+						SetText(description, false).SetTextStyle(tcell.StyleDefault.Foreground(tcell.ColorBlack))
 	descInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Description [white]----- [%s]<Ctrl+s> Save <Esc> Cancel ", titleColor, helpColor)).SetTitleAlign(tview.AlignLeft)
 	descInput.SetFocusFunc(func() { descInput.SetBorderColor(borderSelectedColor) })
 	descInput.SetBlurFunc(func() { descInput.SetBorderColor(borderNormalColor) })
 
 	cmdInput := tview.NewInputField().
 		SetText(cmd).
-		SetFieldBackgroundColor(tcell.ColorReset)
+		SetFieldBackgroundColor(tcell.ColorReset).SetFieldTextColor(tcell.ColorBlack)
+
 	cmdInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Install Cmd ", titleColor)).SetTitleAlign(tview.AlignLeft)
 	cmdInput.SetFocusFunc(func() { cmdInput.SetBorderColor(borderSelectedColor) })
 	cmdInput.SetBlurFunc(func() { cmdInput.SetBorderColor(borderNormalColor) })

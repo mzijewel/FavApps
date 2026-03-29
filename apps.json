@@ -1,10 +1,187 @@
 [
-  {
-    "name": "anbsd",
-    "description": "descsds"
-  },
-  {
-    "name": "htop",
-    "description": "view moew dadata\n"
-  }
+    {
+        "name": "android-commandlinetools",
+        "description": "Android SDK command-line tools\n\nhttps://developer.android.com/studio/command-line",
+        "cmd": "brew install --cask android-commandlinetools"
+    },
+    {
+        "name": "axel",
+        "description": "Lightweight command-line download accelerator\n\nhttps://github.com/axel-download-accelerator/axel",
+        "cmd": "brew install axel"
+    },
+    {
+        "name": "bat",
+        "description": "View content of files\n\nhttps://github.com/sharkdp/bat",
+        "cmd": "brew install bat"
+    },
+    {
+        "name": "boomtypr",
+        "description": "A sleek typing test experience in terminal.\n\nhttps://github.com/yagnikpt/boomtypr",
+        "cmd": "brew install yagnikpt/tap/boomtypr"
+    },
+    {
+        "name": "btop",
+        "description": "Resource monitor. Shows CPU, memory, disk, network usage\n\nhttps://github.com/aristocratos/btop",
+        "cmd": "brew install btop"
+    },
+    {
+        "name": "claude-code",
+        "description": "AI-powered coding assistant CLI\n\nhttps://github.com/anthropics/claude-code",
+        "cmd": "brew install claude-code"
+    },
+    {
+        "name": "curl",
+        "description": "Terminal based API call\n\nhttps://github.com/curl/curl",
+        "cmd": "brew install curl"
+    },
+    {
+        "name": "cursor",
+        "description": "AI-first code editor\n\nhttps://cursor.sh",
+        "cmd": "brew install --cask cursor"
+    },
+    {
+        "name": "docker",
+        "description": "Platform for developing, shipping, and running applications in containers\n\nhttps://github.com/docker/cli",
+        "cmd": "brew install --cask docker"
+    },
+    {
+        "name": "docker compose",
+        "description": "Tool for defining and running multi-container Docker applications\n\nhttps://github.com/docker/compose",
+        "cmd": "brew install docker-compose"
+    },
+    {
+        "name": "ffmpeg",
+        "description": "Video/audio processing and conversion\n\nhttps://github.com/FFmpeg/FFmpeg",
+        "cmd": "brew install ffmpeg"
+    },
+    {
+        "name": "fish",
+        "description": "User friendly terminal shell\n\nhttps://github.com/fish-shell/fish-shell",
+        "cmd": "brew install fish"
+    },
+    {
+        "name": "fzf",
+        "description": "Autocomplete best search option\n\nhttps://github.com/junegunn/fzf",
+        "cmd": "brew install fzf"
+    },
+    {
+        "name": "gemini-cli",
+        "description": "Google Gemini AI command-line interface\n\nhttps://github.com/google/gemini-cli",
+        "cmd": "brew install gemini-cli"
+    },
+    {
+        "name": "go",
+        "description": "Google's programming language for efficient, concurrent software\n\nhttps://github.com/golang/go",
+        "cmd": "brew install go"
+    },
+    {
+        "name": "htop",
+        "description": "Interactive process viewer\n\nhttps://github.com/htop-dev/htop",
+        "cmd": "brew install htop"
+    },
+    {
+        "name": "httpd",
+        "description": "Apache HTTP Server\n\nhttps://github.com/apache/httpd",
+        "cmd": "brew install httpd"
+    },
+    {
+        "name": "kap",
+        "description": "An open-source screen recorder built with web technology\n\nhttps://github.com/wulkano/Kap",
+        "cmd": "brew install --cask kap"
+    },
+    {
+        "name": "lazygit",
+        "description": "Terminal UI for git commands\n\nhttps://github.com/jesseduffield/lazygit",
+        "cmd": "brew install lazygit"
+    },
+    {
+        "name": "mole",
+        "description": "Deep clean and optimize your Mac.\n\nhttps://github.com/tw93/mole\n",
+        "cmd": "brew install mole"
+    },
+    {
+        "name": "mysql",
+        "description": "Open-source relational database management system\n\nhttps://github.com/mysql/mysql-server",
+        "cmd": "brew install mysql"
+    },
+    {
+        "name": "neofetch",
+        "description": "System information tool that displays OS info with ASCII art\n\nhttps://github.com/dylanaraps/neofetch",
+        "cmd": "brew install neofetch"
+    },
+    {
+        "name": "ngrok",
+        "description": "Secure tunnel to expose local servers to the internet\n\nhttps://github.com/ngrok/ngrok",
+        "cmd": "brew install ngrok"
+    },
+    {
+        "name": "nmap",
+        "description": "Network exploration and security auditing tool\n\nhttps://github.com/nmap/nmap",
+        "cmd": "brew install nmap"
+    },
+    {
+        "name": "node",
+        "description": "JavaScript runtime built on Chrome's V8 engine\n\nhttps://github.com/nodejs/node",
+        "cmd": "brew install node"
+    },
+    {
+        "name": "obs",
+        "description": "Open Broadcaster Software for video recording and live streaming\n\nhttps://github.com/obsproject/obs-studio",
+        "cmd": "brew install --cask obs"
+    },
+    {
+        "name": "ollama",
+        "description": "Tool to run large language models locally\n\nhttps://github.com/ollama/ollama",
+        "cmd": "brew install ollama"
+    },
+    {
+        "name": "openjdk",
+        "description": "Open Java Development Kit\n\nhttps://github.com/openjdk/jdk",
+        "cmd": "brew install openjdk"
+    },
+    {
+        "name": "openjdk@17",
+        "description": "Open Java Development Kit version 17 (LTS)\n\nhttps://github.com/openjdk/jdk17",
+        "cmd": "brew install openjdk@17"
+    },
+    {
+        "name": "qwen-code",
+        "description": "AI-powered coding assistant by Alibaba\n\nhttps://github.com/QwenLM/qwen-code",
+        "cmd": "brew install qwen-code"
+    },
+    {
+        "name": "scrcpy",
+        "description": "Display and control Android devices\n\nhttps://github.com/Genymobile/scrcpy",
+        "cmd": "brew install scrcpy"
+    },
+    {
+        "name": "vim",
+        "description": "Highly configurable text editor\n\nhttps://github.com/vim/vim",
+        "cmd": "brew install vim"
+    },
+    {
+        "name": "visual-studio-code",
+        "description": "Microsoft's source-code editor with debugging and Git support\n\nhttps://github.com/microsoft/vscode",
+        "cmd": "brew install --cask visual-studio-code"
+    },
+    {
+        "name": "wget",
+        "description": "Command-line utility for retrieving files using HTTP, HTTPS, FTP\n\nhttps://github.com/mirror/wget",
+        "cmd": "brew install wget"
+    },
+    {
+        "name": "whatsapp",
+        "description": "WhatsApp desktop application\n\nhttps://www.whatsapp.com",
+        "cmd": "brew install --cask whatsapp"
+    },
+    {
+        "name": "yazi",
+        "description": "Terminal file manager.\n\nhttps://github.com/sxyazi/yazi",
+        "cmd": "brew install yazi"
+    },
+    {
+        "name": "zoxide",
+        "description": "Smarter cd command.\n\nhttps://github.com/ajeetdsouza/zoxide",
+        "cmd": "brew install zoxide"
+    }
 ]
