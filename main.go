@@ -1,7 +1,7 @@
 package main
 
 import (
-	"favapss/app"
+	"favapps/app"
 	"fmt"
 	"os/exec"
 	"strings"

@@ -1,4 +1,4 @@
-module favapss
+module favapps
 
 go 1.26.1
 
