@@ -85,7 +85,7 @@ func main() {
 		AddItem(tview.NewTextView().
 			SetTextAlign(tview.AlignCenter).
 			SetDynamicColors(true).
-			SetText(fmt.Sprintf("[%s]<a> Add  <e> Edit  <d> Delete  <Space> Select  <Enter> Run  <c> Copy  </> Search  <q> Quit", helpColor)), 1, 1, false)
+			SetText(fmt.Sprintf("[%s]<a> Add  <e> Edit  <d> Delete  <Space> Select  <Enter> Run  <c> Copy  </> Search  <p> Path  <q> Quit", helpColor)), 1, 1, false)
 
 	pages.AddPage("main", flex, true, true)
 
