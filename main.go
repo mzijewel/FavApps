@@ -251,10 +251,21 @@ func updateDetails(index int) {
 		fmt.Fprintf(details, "[black]%s", apps[filteredIndices[index]].Description)
 
 		cmdView.Clear()
-		cmd := apps[filteredIndices[index]].Cmd
-		if cmd != "" {
-			fmt.Fprintf(cmdView, "[black]%s", cmd)
+		a := apps[filteredIndices[index]]
+		currentCmd := a.Cmd()
+
+		writeOSCmd := func(label, cmd string) {
+			if cmd == "" {
+				return
+			}
+			if cmd == currentCmd {
+				fmt.Fprintf(cmdView, "[green]%s:[black] %s\n", label, cmd)
+			} else {
+				fmt.Fprintf(cmdView, "[gray]%s:[black] %s\n", label, cmd)
+			}
 		}
+		writeOSCmd("Mac", a.CmdMac)
+		writeOSCmd("Linux", a.CmdLinux)
 	}
 }
 
@@ -279,7 +290,8 @@ func showSearch() {
 			if text == "" ||
 				strings.Contains(strings.ToLower(a.Name), searchLower) ||
 				strings.Contains(strings.ToLower(a.Description), searchLower) ||
-				strings.Contains(strings.ToLower(a.Cmd), searchLower) {
+				strings.Contains(strings.ToLower(a.CmdMac), searchLower) ||
+				strings.Contains(strings.ToLower(a.CmdLinux), searchLower) {
 				filteredIndices = append(filteredIndices, i)
 			}
 		}
@@ -312,7 +324,7 @@ func copyInstallCmd(index int) {
 		return
 	}
 	appIdx := filteredIndices[index]
-	cmd := apps[appIdx].Cmd
+	cmd := apps[appIdx].Cmd()
 	if cmd == "" {
 		return
 	}
@@ -346,11 +358,11 @@ func showRunConfirm(index int) {
 		}{}
 		for appName := range selectedIndices {
 			for _, app := range apps {
-				if app.Name == appName && app.Cmd != "" {
+				if app.Name == appName && app.Cmd() != "" {
 					selectedApps = append(selectedApps, struct {
 						name string
 						cmd  string
-					}{app.Name, app.Cmd})
+					}{app.Name, app.Cmd()})
 					break
 				}
 			}
@@ -427,7 +439,7 @@ func showRunConfirm(index int) {
 		return
 	}
 	appIdx := filteredIndices[index]
-	cmd := apps[appIdx].Cmd
+	cmd := apps[appIdx].Cmd()
 	if cmd == "" {
 		return
 	}
@@ -471,8 +483,8 @@ func runAllSelectedCmds() {
 
 	for appName := range selectedIndices {
 		for _, app := range apps {
-			if app.Name == appName && app.Cmd != "" {
-				commands = append(commands, appCmd{app.Name, app.Cmd})
+			if app.Name == appName && app.Cmd() != "" {
+				commands = append(commands, appCmd{app.Name, app.Cmd()})
 				break
 			}
 		}
@@ -556,7 +568,7 @@ func runInstallCmd(index int) {
 		return
 	}
 	appIdx := filteredIndices[index]
-	cmd := apps[appIdx].Cmd
+	cmd := apps[appIdx].Cmd()
 	if cmd == "" {
 		return
 	}
@@ -633,12 +645,14 @@ func runInstallCmd(index int) {
 func showForm(index int) {
 	name := ""
 	description := ""
-	cmd := ""
+	cmdMac := ""
+	cmdLinux := ""
 
 	if index >= 0 && index < len(filteredIndices) {
 		name = apps[filteredIndices[index]].Name
 		description = apps[filteredIndices[index]].Description
-		cmd = apps[filteredIndices[index]].Cmd
+		cmdMac = apps[filteredIndices[index]].CmdMac
+		cmdLinux = apps[filteredIndices[index]].CmdLinux
 	}
 
 	nameInput := tview.NewInputField().
@@ -654,13 +668,21 @@ func showForm(index int) {
 	descInput.SetFocusFunc(func() { descInput.SetBorderColor(borderSelectedColor) })
 	descInput.SetBlurFunc(func() { descInput.SetBorderColor(borderNormalColor) })
 
-	cmdInput := tview.NewInputField().
-		SetText(cmd).
+	cmdMacInput := tview.NewInputField().
+		SetText(cmdMac).
 		SetFieldBackgroundColor(tcell.ColorReset).SetFieldTextColor(tcell.ColorBlack)
 
-	cmdInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Install Cmd ", titleColor)).SetTitleAlign(tview.AlignLeft)
-	cmdInput.SetFocusFunc(func() { cmdInput.SetBorderColor(borderSelectedColor) })
-	cmdInput.SetBlurFunc(func() { cmdInput.SetBorderColor(borderNormalColor) })
+	cmdMacInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Install Cmd (Mac) ", titleColor)).SetTitleAlign(tview.AlignLeft)
+	cmdMacInput.SetFocusFunc(func() { cmdMacInput.SetBorderColor(borderSelectedColor) })
+	cmdMacInput.SetBlurFunc(func() { cmdMacInput.SetBorderColor(borderNormalColor) })
+
+	cmdLinuxInput := tview.NewInputField().
+		SetText(cmdLinux).
+		SetFieldBackgroundColor(tcell.ColorReset).SetFieldTextColor(tcell.ColorBlack)
+
+	cmdLinuxInput.SetBorder(true).SetTitle(fmt.Sprintf("[%s] Install Cmd (Linux) ", titleColor)).SetTitleAlign(tview.AlignLeft)
+	cmdLinuxInput.SetFocusFunc(func() { cmdLinuxInput.SetBorderColor(borderSelectedColor) })
+	cmdLinuxInput.SetBlurFunc(func() { cmdLinuxInput.SetBorderColor(borderNormalColor) })
 
 	errorText := tview.NewTextView().
 		SetDynamicColors(true).
@@ -670,7 +692,8 @@ func showForm(index int) {
 	formFlex := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(nameInput, 3, 1, true).
 		AddItem(descInput, 0, 1, false).
-		AddItem(cmdInput, 3, 1, false).
+		AddItem(cmdMacInput, 3, 1, false).
+		AddItem(cmdLinuxInput, 3, 1, false).
 		AddItem(errorText, 2, 1, false)
 
 	// Input capture for name input to handle Enter
@@ -697,7 +720,8 @@ func showForm(index int) {
 		if event.Key() == tcell.KeyCtrlS {
 			newName := nameInput.GetText()
 			newDesc := descInput.GetText()
-			newCmd := cmdInput.GetText()
+			newCmdMac := cmdMacInput.GetText()
+			newCmdLinux := cmdLinuxInput.GetText()
 			if newName == "" {
 				errorText.SetText("[red]Name cannot be empty")
 				return nil
@@ -714,7 +738,7 @@ func showForm(index int) {
 				}
 			}
 
-			newApp := app.App{Name: newName, Description: newDesc, Cmd: newCmd}
+			newApp := app.App{Name: newName, Description: newDesc, CmdMac: newCmdMac, CmdLinux: newCmdLinux}
 			if index >= 0 {
 				apps[filteredIndices[index]] = newApp
 			} else {
@@ -732,7 +756,9 @@ func showForm(index int) {
 			if nameInput.HasFocus() {
 				tviewApp.SetFocus(descInput)
 			} else if descInput.HasFocus() {
-				tviewApp.SetFocus(cmdInput)
+				tviewApp.SetFocus(cmdMacInput)
+			} else if cmdMacInput.HasFocus() {
+				tviewApp.SetFocus(cmdLinuxInput)
 			} else {
 				tviewApp.SetFocus(nameInput)
 			}
@@ -741,7 +767,7 @@ func showForm(index int) {
 		return event
 	})
 
-	pages.AddPage("form", modal(formFlex, 60, 20), true, true)
+	pages.AddPage("form", modal(formFlex, 60, 23), true, true)
 	tviewApp.SetFocus(nameInput)
 }
 
