@@ -14,9 +14,16 @@ type Config struct {
 }
 
 // Cmd returns the install command for the OS currently running the app.
+// If the command for the current OS is missing, the other one is used.
 func (a App) Cmd() string {
 	if runtime.GOOS == "linux" {
-		return a.CmdLinux
+		if a.CmdLinux != "" {
+			return a.CmdLinux
+		}
+		return a.CmdMac
 	}
-	return a.CmdMac
+	if a.CmdMac != "" {
+		return a.CmdMac
+	}
+	return a.CmdLinux
 }

@@ -80,8 +80,8 @@ func main() {
 		AddItem(tview.NewFlex().
 			AddItem(list, 0, 1, true).
 			AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-				AddItem(details, 0, 3, false).
-				AddItem(cmdView, 0, 1, false), 0, 2, false), 0, 1, true).
+				AddItem(cmdView, 0, 1, false).
+				AddItem(details, 0, 3, false), 0, 2, false), 0, 1, true).
 		AddItem(tview.NewTextView().
 			SetTextAlign(tview.AlignCenter).
 			SetDynamicColors(true).
